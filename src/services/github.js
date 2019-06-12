@@ -44,6 +44,7 @@ export const createHook = async () => {
     events: ['push', 'pull_request', 'pull_request_review', 'deployment_status']
   });
 
+
   console.log(result);
 };
 
