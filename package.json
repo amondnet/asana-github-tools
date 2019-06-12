@@ -42,6 +42,7 @@
     "asana": "^0.16.6",
     "body-parser": "^1.18.3",
     "dotenv": "^6.1.0",
+    "escape-html": "^1.0.3",
     "express": "^4.16.4",
     "lodash": "^4.17.11",
     "pg": "^7.8.0",

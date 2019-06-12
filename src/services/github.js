@@ -10,7 +10,7 @@ import {
   getCustomFieldOption,
   client
 } from './asana';
-
+import escape from 'escape-html';
 const octokit = new Octokit({
   auth: `token ${process.env.GITHUB_PATOKEN}`
 });
@@ -127,9 +127,11 @@ export const handleCommit = async ({ ref, commits }) => {
         if (stage === 'Draft') {
           setStage({ stage: 'In Progress', task });
         }
+        let escaped = escape(message);
+        console.log('escaped : ', escaped);
         addCommentToTask({
           gid,
-          htmlText: `<body><strong>GitHub Commit</strong> by <em>${name}</em><ul><li>${message}</li><li><a href='${url}'></a></li></ul></body>`
+          htmlText: `<body><strong>GitHub Commit</strong> by <em>${name}</em><ul><li>${escaped}</li><li><a href='${url}'></a></li></ul></body>`
         });
       //});
     }
