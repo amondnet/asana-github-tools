@@ -56,6 +56,20 @@ const findTaskId = commitMessage => {
   return null;
 };
 
+const findAsanaId = commitMessage => {
+  const regex = /https:\/\/app.asana.com\/0\/\d+\/\d+/m;
+  const regex2 = /https:\/\/app.asana.com\/0\/\d+\//;
+
+  const match = commitMessage.match(regex);
+  if (match) {
+    console.log(match);
+    const id =  match[0].replace(regex2, '').split('/')[0];
+    console.log('id : ', id);
+    return id;
+  }
+  return null;
+};
+
 export const handleHooks = req => {
   const body = JSON.parse(req.body);
   const type = req.headers['x-github-event'];
@@ -93,15 +107,22 @@ export const handleCommit = async ({ ref, commits }) => {
       url,
       committer: { name }
     } = commit;
-    const taskId = findTaskId(message);
-    if (taskId) {
-      const response = await searchTask(taskId);
-      _.each(response.data, async searchedTask => {
-        const task = await getTask(searchedTask.gid);
+    const asanaId = findAsanaId(message);
+    if (asanaId) {
+      //const response = await searchTask(taskId);
+      //_.each(response.data, async searchedTask => {
+        const task = await getTask(asanaId);
+        console.log(`task : ${task}`);
         const { gid, custom_fields: customFields } = task;
-        const {
+      console.log(`gid : ${gid}`);
+
+      let test = await getCustomField(customFields);
+      console.log(`test : ${JSON.stringify(test)}`);
+
+      const {
           enum_value: { name: stage }
         } = await getCustomField(customFields);
+
         if (stage === 'Draft') {
           setStage({ stage: 'In Progress', task });
         }
@@ -109,14 +130,14 @@ export const handleCommit = async ({ ref, commits }) => {
           gid,
           htmlText: `<body><strong>GitHub Commit</strong> by <em>${name}</em><ul><li>${message}</li><li><a href='${url}'></a></li></ul></body>`
         });
-      });
+      //});
     }
   });
 };
 
 const getTaskIdsFromPullRequest = async number => {
   const collection = await listCommits(number);
-  return _.compact(_.uniq(_.map(collection, ({ commit: { message } }) => findTaskId(message))));
+  return _.compact(_.uniq(_.map(collection, ({ commit: { message } }) => findAsanaId(message))));
 };
 
 export const handlePullRequest = async ({
@@ -133,10 +154,10 @@ export const handlePullRequest = async ({
 }) => {
   const collection = await listCommits(number);
   const associatedTasks = _.compact(
-    _.uniq(_.map(collection, ({ commit: { message } }) => findTaskId(message)))
+    _.uniq(_.map(collection, ({ commit: { message } }) => findAsanaId(message)))
   );
-  _.each(associatedTasks, async taskId => {
-    const response = await searchTask(taskId);
+  _.each(associatedTasks, async asanaId => {
+    const response = await getTask(asanaId);
     _.each(response.data, task => {
       switch (action) {
         case 'opened':
@@ -192,7 +213,7 @@ export const handlePullRequestReview = async ({
   if (action === 'submitted' && state === 'approved') {
     const taskIds = await getTaskIdsFromPullRequest(number);
     _.each(taskIds, async taskId => {
-      const response = await searchTask(taskId);
+      const response = await getTask(taskId);
       _.each(response.data, task => {
         addCommentToTask({
           gid: task.gid,
