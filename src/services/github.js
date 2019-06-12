@@ -23,11 +23,11 @@ export const listHooks = async () => {
   console.log(data);
 };
 
-export const listCommits = async number => {
+export const listCommits = async pull_number => {
   const res = await octokit.pulls.listCommits({
     owner: process.env.GITHUB_OWNER_NAME,
     repo: process.env.GITHUB_REPO_NAME,
-    number
+    pull_number
   });
   return res.data;
 };
@@ -154,12 +154,17 @@ export const handlePullRequest = async ({
   }
 }) => {
   const collection = await listCommits(number);
+  console.log('collection : ',collection);
+
   const associatedTasks = _.compact(
     _.uniq(_.map(collection, ({ commit: { message } }) => findAsanaId(message)))
   );
+  console.log('ids : ',associatedTasks);
   _.each(associatedTasks, async asanaId => {
-    const response = await getTask(asanaId);
-    _.each(response.data, task => {
+    const task = await getTask(asanaId);
+    console.log('response : ',task);
+    console.log('action : ',action);
+
       switch (action) {
         case 'opened':
           addCommentToTask({
@@ -194,7 +199,6 @@ export const handlePullRequest = async ({
         default:
       }
     });
-  });
 };
 
 export const handlePullRequestReview = async ({
@@ -214,8 +218,7 @@ export const handlePullRequestReview = async ({
   if (action === 'submitted' && state === 'approved') {
     const taskIds = await getTaskIdsFromPullRequest(number);
     _.each(taskIds, async taskId => {
-      const response = await getTask(taskId);
-      _.each(response.data, task => {
+      const task = await getTask(taskId);
         addCommentToTask({
           gid: task.gid,
           htmlText: `<body><strong>GitHub PR #${number} / Approved ✅</strong> (${headRef} ➡️ ${baseRef}) by <em>${login}</em><ul><li>${title}</li><li><a href='${url}'></a></li></ul></body>`
@@ -224,7 +227,6 @@ export const handlePullRequestReview = async ({
           stage: 'Approved',
           task
         });
-      });
     });
   }
 };
